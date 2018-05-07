@@ -1,13 +1,14 @@
 ---
 - name: Install WordPress, MariaDB, Nginx, and PHP-FPM
-  hosts: wordpress-server
-  remote_user: root
+  hosts: targets
+  remote_user: rainbow
   # remote_user: user
-  # sudo: yes
-
+  become: yes
+  # become_user: rainbow
   roles:
-    - common
-    - mariadb
-    - nginx
-    - php-fpm
-    - wordpress
+    # - common
+    # - mariadb
+    # - nginx
+    - dev_env
+    # - php-fpm
+    # - wordpress
