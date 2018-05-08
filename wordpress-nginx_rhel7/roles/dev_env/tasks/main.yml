@@ -18,20 +18,29 @@
     dest: /home/rainbow/autojump
     clone: yes
     update: yes
+  become_user: rainbow
 
 # - name: Install autojump
 #   shell: /home/rainbow/autojump/install.py
 #   args:
 #     executable: /bin/bash
 
+# - name: Install vim-plug
+#   shell: curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+#   args:
+#     executable: /bin/bash
+
 - name: Install vim-plug
-  shell: curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-  args:
-    executable: /bin/bash
+  get_url:
+    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    dest: /home/rainbow/.vim/autoload/plug.vim
+    mode: 0755
+    owner: rainbow
 
 # - name: Install dotfiles
 - git:
     repo: 'https://github.com/rainbow23/dotfiles.git'
-    dest: /home/rainbow/dotfiledotfilesnel]s
+    dest: /home/rainbow/dotfiles
     clone: yes
     update: yes
+  become_user: rainbow
