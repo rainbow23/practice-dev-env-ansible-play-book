@@ -11,8 +11,8 @@
 - name: Install zsh
   yum: name=zsh state=present
 
-# - name: Install autojump
-- git:
+- name: Install autojump
+  git:
     repo: 'https://github.com/wting/autojump.git'
     dest: /home/rainbow/autojump
     clone: yes
@@ -24,12 +24,31 @@
 #   args:
 #     executable: /bin/bash
 
-# - name: Install dotfiles
-- git:
+- name: Install dotfiles
+  git:
     repo: 'https://github.com/rainbow23/dotfiles.git'
     dest: /home/rainbow/dotfiles
-    clone: yes
+
+    force: yes
     update: yes
+
+- name: Permission change dotfiles
+  file:
+    path: /home/rainbow/dotfiles
+    owner: rainbow
+    group: wheel
+    mode: 0755
+    recurse: true
+    state: directory
+
+- name: Create symlink .vimrc
+  file:
+    src: /home/rainbow/dotfiles/_vimrc
+    dest: /home/rainbow/.vimrc
+    owner: rainbow
+    group: wheel
+    mode: 0755
+    state: link
 
 # dest dir がないとでるので後回し
 # - name: Install vim-plug
