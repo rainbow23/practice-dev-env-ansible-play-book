@@ -1,41 +1,57 @@
 ---
 - name: Install vim
-  yum: name=vim state=present
+  yum: name=vim state=latest
 
 - name: Install tmux
   yum: name=tmux state=present
 
 - name: Install git
-  yum: name=git state=present
+  yum: name=git state=latest
 
 - name: Install zsh
   yum: name=zsh state=present
 
-- name: Install autojump
+- name: autojumpディレクトリの存在チェック
+  stat:
+    path: "/home/{{ ansible_user }}/autojump"
+  register: fm
+
+- name: Clone autojump
   git:
     repo: 'https://github.com/wting/autojump.git'
-    dest: /home/rainbow/autojump
+    dest: "/home/{{ ansible_user }}/autojump"
     clone: yes
     update: yes
+  become_user: "{{ ansible_user }}"
+  when: not fm.stat.exists
 
-# module error 後回し
-# - name: Install autojump
-#   shell: /home/rainbow/autojump/install.py
-#   args:
-#     executable: /bin/bash
+- name: Permission change autojump directory
+  file:
+    path: "/home/{{ ansible_user }}/autojump"
+    owner: "{{ ansible_user }}"
+    group: wheel
+    mode: 0755
+    recurse: true
+    state: directory
+
+- name: Install autojump
+  shell: "cd /home/{{ ansible_user }}/autojump && ./install.py"
+  args:
+    executable: /bin/bash
+  become_user: "{{ ansible_user }}"
 
 - name: Install dotfiles
   git:
     repo: 'https://github.com/rainbow23/dotfiles.git'
-    dest: /home/rainbow/dotfiles
-
+    dest: "/home/{{ ansible_user }}/dotfiles"
     force: yes
     update: yes
+  become_user: "{{ ansible_user }}"
 
-- name: Permission change dotfiles
+- name: Permission change dotfiles directory
   file:
-    path: /home/rainbow/dotfiles
-    owner: rainbow
+    path: "/home/{{ ansible_user }}/dotfiles"
+    owner: "{{ ansible_user }}"
     group: wheel
     mode: 0755
     recurse: true
@@ -43,18 +59,43 @@
 
 - name: Create symlink .vimrc
   file:
-    src: /home/rainbow/dotfiles/_vimrc
-    dest: /home/rainbow/.vimrc
-    owner: rainbow
+    src: "/home/{{ ansible_user }}/dotfiles/_vimrc"
+    dest: "/home/{{ ansible_user }}/.vimrc"
+    owner: "{{ ansible_user }}"
     group: wheel
     mode: 0755
     state: link
 
-# dest dir がないとでるので後回し
-# - name: Install vim-plug
-#   get_url:
-#     url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-#     dest: /home/rainbow/.vim/autoload/plug.vim
-#     mode: 0755
-#     owner: rainbow
+- name: Create symlink .bashrc
+  file:
+    src: "/home/{{ ansible_user }}/dotfiles/_bashrc"
+    dest: "/home/{{ ansible_user }}/.bashrc"
+    owner: "{{ ansible_user }}"
+    group: wheel
+    mode: 0755
+    state: link
+
+- name: Create symlink .zshrc
+  file:
+    src: "/home/{{ ansible_user }}/dotfiles/_zshrc"
+    dest: "/home/{{ ansible_user }}/.zshrc"
+    owner: "{{ ansible_user }}"
+    group: wheel
+    mode: 0755
+    state: link
+
+- name: Create folder .vim
+  file:
+    path: "/home/{{ ansible_user }}/.vim/autoload"
+    owner: "{{ ansible_user }}"
+    group: wheel
+    mode: 0744
+    state: directory
+
+- name: Install vim-plug
+  get_url:
+    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    dest: "/home/{{ ansible_user }}/.vim/autoload/plug.vim"
+    mode: 0755
+    owner: "{{ ansible_user }}"
 
