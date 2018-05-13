@@ -9,51 +9,35 @@
     - git
     - zsh
 
-- name: autojumpディレクトリの存在チェック
-  stat:
-    path: "/home/{{ ansible_user }}/autojump"
-  register: fm
-
-- name: Clone autojump
+- name: Clone repository
   git:
-    repo: 'https://github.com/wting/autojump.git'
-    dest: "/home/{{ ansible_user }}/autojump"
-    clone: yes
+    repo: "https://github.com/{{ item.path }}"
+    dest: "/home/{{ ansible_user }}/{{ item.dir }}"
+    force: yes
     update: yes
   become_user: "{{ ansible_user }}"
-  when: not fm.stat.exists
+  with_items:
+      - { path: "wting/autojump.git",     dir: "autojump" }
+      - { path: "rainbow23/dotfiles.git", dir: "dotfiles" }
+      - { path: "tmux-plugins/tpm",       dir: ".tmux/plugins/tpm" }
 
-- name: Permission change autojump directory
+- name: Permission change directories
   file:
-    path: "/home/{{ ansible_user }}/autojump"
+    path: "/home/{{ ansible_user }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: wheel
     mode: 0755
     recurse: true
     state: directory
+  with_items:
+    - autojump
+    - dotfiles
 
 - name: Install autojump
   shell: "cd /home/{{ ansible_user }}/autojump && ./install.py"
   args:
     executable: /bin/bash
   become_user: "{{ ansible_user }}"
-
-- name: Clone dotfiles
-  git:
-    repo: 'https://github.com/rainbow23/dotfiles.git'
-    dest: "/home/{{ ansible_user }}/dotfiles"
-    force: yes
-    update: yes
-  become_user: "{{ ansible_user }}"
-
-- name: Permission change dotfiles directory
-  file:
-    path: "/home/{{ ansible_user }}/dotfiles"
-    owner: "{{ ansible_user }}"
-    group: wheel
-    mode: 0755
-    recurse: true
-    state: directory
 
 - name: .bashrcディレクトリの存在チェック
   stat:
