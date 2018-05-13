@@ -1,15 +1,13 @@
 ---
-- name: Install vim
-  yum: name=vim state=latest
-
-- name: Install tmux
-  yum: name=tmux state=present
-
-- name: Install git
-  yum: name=git state=latest
-
-- name: Install zsh
-  yum: name=zsh state=present
+- name: "Install packages"
+  yum:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - vim-enhanced
+    - tmux
+    - git
+    - zsh
 
 - name: autojumpディレクトリの存在チェック
   stat:
@@ -40,7 +38,7 @@
     executable: /bin/bash
   become_user: "{{ ansible_user }}"
 
-- name: Install dotfiles
+- name: Clone dotfiles
   git:
     repo: 'https://github.com/rainbow23/dotfiles.git'
     dest: "/home/{{ ansible_user }}/dotfiles"
@@ -57,39 +55,37 @@
     recurse: true
     state: directory
 
-- name: Create symlink .vimrc
+- name: .bashrcディレクトリの存在チェック
+  stat:
+    path: "/home/{{ ansible_user }}/.bashrc"
+  register: bc
+
+- name: Delete file at .bashrc
   file:
-    src: "/home/{{ ansible_user }}/dotfiles/_vimrc"
-    dest: "/home/{{ ansible_user }}/.vimrc"
+    path: "/home/{{ ansible_user }}/.bashrc"
+    state: absent
+  when: bc.stat.exists == True
+
+- name: Create symlink
+  file:
+    src: "/home/{{ ansible_user }}/dotfiles/_{{ item }}"
+    dest: "/home/{{ ansible_user }}/.{{ item }}"
     owner: "{{ ansible_user }}"
     group: wheel
     mode: 0755
     state: link
+  with_items:
+    - vimrc
+    - bashrc
+    - zshrc
+    - tmux.conf
 
-- name: Create symlink .bashrc
-  file:
-    src: "/home/{{ ansible_user }}/dotfiles/_bashrc"
-    dest: "/home/{{ ansible_user }}/.bashrc"
-    owner: "{{ ansible_user }}"
-    group: wheel
-    mode: 0755
-    state: link
-
-- name: Create symlink .zshrc
-  file:
-    src: "/home/{{ ansible_user }}/dotfiles/_zshrc"
-    dest: "/home/{{ ansible_user }}/.zshrc"
-    owner: "{{ ansible_user }}"
-    group: wheel
-    mode: 0755
-    state: link
-
-- name: Create folder .vim
+- name: Create Directory
   file:
     path: "/home/{{ ansible_user }}/.vim/autoload"
     owner: "{{ ansible_user }}"
     group: wheel
-    mode: 0744
+    mode: 0755
     state: directory
 
 - name: Install vim-plug
