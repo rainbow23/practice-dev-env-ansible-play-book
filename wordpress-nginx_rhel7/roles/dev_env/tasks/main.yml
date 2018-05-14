@@ -110,7 +110,6 @@
     echo 'eval "$(pyenv init -)"' >> ~/.zshrc
     echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.zshrc
     source ~/.bashrc
-    pyenv -v
     pyenv update
   become_user: "{{ ansible_user }}"
   args:
@@ -121,7 +120,7 @@
     path: "{{ home_path }}/.pyenv/versions/3.6.0"
   register: py_path
 
-- name: Install pyenv
+- name: Pyenv install specific python version
   shell: |
     pyenv install 3.6.0
   become_user: "{{ ansible_user }}"
@@ -132,7 +131,7 @@
 
 #########################
 #########################
-- name: Install Vim
+- name: Compile Vim
   shell: >
     cd /home/{{ ansible_user }}/vim8src && ./configure
     --enable-fail-if-missing
@@ -140,13 +139,19 @@
     --disable-selinux
     --enable-luainterp
     --enable-perlinterp
-    --enable-python3interp=dynamic
+    --enable-python3interp vi_cv_path_python3=/home/vagrant/.pyenv/versions/3.6.0/bin/python3.6
     --with-python3-config-dir=/home/vagrant/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
     --enable-cscope
     --enable-fontset
     --enable-multibyte
-    vi_cv_path_python3=vi_cv_path_python3=/home/vagrant/.pyenv/versions/3.6.0/bin/python3.6
   become_user: "{{ ansible_user }}"
+  args:
+    executable: /bin/bash
+
+- name: Make & install Vim
+  shell: >
+    cd /home/{{ ansible_user }}/vim8src && make
+    && make install
   args:
     executable: /bin/bash
 
