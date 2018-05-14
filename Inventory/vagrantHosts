@@ -1,6 +1,5 @@
 [targets]
-192.168.33.10
+myvagrant
 
 [targets:vars]
-ansible_port=22
 ansible_user=vagrant
