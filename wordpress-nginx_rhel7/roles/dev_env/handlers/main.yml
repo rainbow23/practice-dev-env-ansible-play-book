@@ -1,0 +1,35 @@
+- name: Permission change to directories
+  file:
+    path: "{{ home_path }}/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: wheel
+    mode: 0755
+    recurse: true
+    state: directory
+  with_items:
+    - autojump
+    - dotfiles
+    - .tmux/plugins/tpm
+    - vim8src
+
+- name: Install autojump
+  shell: "cd {{ home_path }}/autojump && ./install.py"
+  args:
+    executable: /bin/bash
+  become_user: "{{ ansible_user }}"
+
+# - name: Start Create symlink
+#   file:
+#     src: "{{ home_path }}/dotfiles/_{{ item }}"
+#     dest: "{{ home_path }}/.{{ item }}"
+#     owner: "{{ ansible_user }}"
+#     group: wheel
+#     mode: 0755
+#     state: link
+#   with_items:
+#     - vimrc
+#     - bashrc
+#     - zshrc
+#     - tmux.conf
+#   listen: Create symlink
+
