@@ -1,0 +1,143 @@
+---
+- name: Install autojump
+  shell: |
+    cd {{ home_path }}/autojump && ./install.py
+    git reset --hard
+  args:
+    executable: /bin/bash
+  become_user: "{{ ansible_user }}"
+
+- block:
+  - name: Check tmux has Installed
+    stat:
+      path: /usr/local/bin/tmux
+    register: tmux_path
+    # listen: Install tmux
+  - name: Make install tmux
+    shell: |
+      cd "{{ home_path }}/tmuxsrc"
+      sh autogen.sh
+      ./configure --prefix=/usr/local
+      make -j4
+      sudo make install
+      git reset --hard
+    become_user: "{{ ansible_user }}"
+    when: tmux_path.stat.exists == false
+    args:
+      executable: /bin/bash
+    # listen: Install tmux
+
+  # シェルをリフレッシュ
+  # exec $SHELL -l
+
+- block:
+  - name: add goenv path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# anyenv' >> {{ item }}
+      echo 'if [ -d $HOME/.anyenv ] ; then' >> {{ item }}
+      echo '    export PATH="$HOME/.anyenv/bin:$PATH"' >> {{ item }}
+      echo '    eval "$(anyenv init -)"' >> {{ item }}
+      echo 'fi' >> {{ item }}
+    become_user: "{{ ansible_user }}"
+    args:
+      executable: /bin/bash
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+    # listen: Install goenv
+
+  - name: Check goenv has cloned
+    stat:
+      path: "{{ home_path }}/.anyenv/envs/goenv"
+    register: goenv_path
+    # listen: Install goenv
+
+  - name: Try install goenv
+    shell: |
+      cd {{ home_path }}/.anyenv
+      exec $SHELL -l
+      anyenv install goenv
+      exec $SHELL -l
+    # become_user: "{{ ansible_user }}"
+    when: goenv_path.stat.exists == false
+    args:
+      executable: /bin/bash
+    # listen: Install goenv
+
+- block:
+  - name: Create vim-plug folder
+    file:
+      path: "{{ home_path }}/.vim/autoload"
+      owner: "{{ ansible_user }}"
+      group: wheel
+      mode: 0755
+      state: directory
+  - name: Install vim-plug
+    get_url:
+      url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+      dest: "{{ home_path }}/.vim/autoload/plug.vim"
+      mode: 0755
+      owner: "{{ ansible_user }}"
+
+- block:
+  - name: Ready for install vim, Install pyenv from source
+    shell: "curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash"
+  - name: add pyenv path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# pyenv' >> {{ item }}
+      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
+      echo 'eval "$(pyenv init -)"' >> {{ item }}
+      echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      exec $SHELL -l
+      pyenv update
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+  - name: .pyenvディレクトリの存在チェック
+    stat:
+      path: "{{ home_path }}/.pyenv/versions/3.6.0"
+    register: py_path
+  - name: Pyenv install specific python version
+    shell: |
+      pyenv install 3.6.0
+    when: py_path.stat.exists == False
+    args:
+      executable: /bin/bash
+  become_user: "{{ ansible_user }}"
+
+
+- block:
+  - name: /usr/local/bin/vim ディレクトリの存在チェック
+    stat:
+      path: /usr/local/bin/vim
+    register: vim_path
+  - name: Compile Vim
+    shell: >
+      cd {{ home_path }}/vim8src && ./configure
+      --enable-fail-if-missing
+      --with-features=huge
+      --disable-selinux
+      --enable-luainterp
+      --enable-perlinterp
+      --enable-python3interp vi_cv_path_python3={{ home_path }}/.pyenv/versions/3.6.0/bin/python3.6
+      --with-python3-config-dir={{ home_path }}/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+      --enable-cscope
+      --enable-fontset
+      --enable-multibyte
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    executable: /bin/bash
+    when: vim_path.stat.exists == False
+
+  - name: Make & install Vim
+    shell: |
+      cd {{ home_path }}/vim8src
+      make
+      make install
+      git reset --hard
+    when: vim_path.stat.exists == False
+    args:
+      executable: /bin/bash
+
+

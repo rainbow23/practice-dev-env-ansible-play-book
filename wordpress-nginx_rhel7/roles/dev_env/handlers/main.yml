@@ -9,27 +9,73 @@
   with_items:
     - autojump
     - dotfiles
+    - tmuxsrc
     - .tmux/plugins/tpm
     - vim8src
+    - .anyenv
 
-- name: Install autojump
-  shell: "cd {{ home_path }}/autojump && ./install.py"
-  args:
-    executable: /bin/bash
-  become_user: "{{ ansible_user }}"
+# - name: Install autojump
+#   shell: |
+#     cd {{ home_path }}/autojump && ./install.py
+#     git reset --hard
+#   args:
+#     executable: /bin/bash
+#   become_user: "{{ ansible_user }}"
 
-# - name: Start Create symlink
-#   file:
-#     src: "{{ home_path }}/dotfiles/_{{ item }}"
-#     dest: "{{ home_path }}/.{{ item }}"
-#     owner: "{{ ansible_user }}"
-#     group: wheel
-#     mode: 0755
-#     state: link
-#   with_items:
-#     - vimrc
-#     - bashrc
-#     - zshrc
-#     - tmux.conf
-#   listen: Create symlink
 
+# - block:
+#   - name: Check tmux has Installed
+#     stat:
+#       path: /usr/local/bin/tmux
+#     register: tmux_path
+#     listen: Install tmux
+#   - name: Make install tmux
+#     shell: |
+#       cd "{{ home_path }}/tmuxsrc"
+#       sh autogen.sh
+#       ./configure --prefix=/usr/local
+#       make -j4
+#       sudo make install
+#       git reset --hard
+#     become_user: "{{ ansible_user }}"
+#     when: tmux_path.stat.exists == false
+#     args:
+#       executable: /bin/bash
+#     listen: Install tmux
+
+#   # シェルをリフレッシュ
+#   # exec $SHELL -l
+
+# - block:
+#   - name: add goenv path to .bashrc and .zshrc
+#     shell: |
+#       echo -e '\n# anyenv' >> {{ item }}
+#       echo 'if [ -d $HOME/.anyenv ] ; then' >> {{ item }}
+#       echo '    export PATH="$HOME/.anyenv/bin:$PATH"' >> {{ item }}
+#       echo '    eval "$(anyenv init -)"' >> {{ item }}
+#       echo 'fi' >> {{ item }}
+#     become_user: "{{ ansible_user }}"
+#     args:
+#       executable: /bin/bash
+#     with_items:
+#       - ~/.bashrc
+#       - ~/.zshrc
+#     listen: Install goenv
+
+#   - name: Check goenv has cloned
+#     stat:
+#       path: "{{ home_path }}/.anyenv/envs/goenv"
+#     register: goenv_path
+#     listen: Install goenv
+
+#   - name: Try install goenv
+#     shell: |
+#       cd {{ home_path }}/.anyenv
+#       exec $SHELL -l
+#       anyenv install goenv
+#       exec $SHELL -l
+#     # become_user: "{{ ansible_user }}"
+#     when: goenv_path.stat.exists == false
+#     args:
+#       executable: /bin/bash
+#     listen: Install goenv
