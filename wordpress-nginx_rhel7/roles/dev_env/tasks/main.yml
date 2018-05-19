@@ -2,6 +2,7 @@
 - name: "Set vars"
   set_fact:
     home_path: "/home/{{ ansible_user }}"
+    base_clone_path: "https://github.com"
 
 - name: "Install packages"
   yum:
@@ -25,19 +26,22 @@
 
 - name: Clone repository
   git:
-    repo: "https://github.com/{{ item.path }}"
+    repo: "{{ item.path }}"
     dest: "{{ home_path }}/{{ item.dir }}"
     force: yes
-    update: yes
+    update: no
   become_user: "{{ ansible_user }}"
   with_items:
-    - { path: "wting/autojump.git",     dir: "autojump" }
-    - { path: "rainbow23/dotfiles.git", dir: "dotfiles" }
-    - { path: "tmux-plugins/tpm",       dir: ".tmux/plugins/tpm" }
-    - { path: "vim/vim",                dir: "vim8src" }
+    - { path: "{{ base_clone_path }}/wting/autojump.git",     dir: "autojump" }
+    - { path: "{{ base_clone_path }}/rainbow23/dotfiles.git", dir: "dotfiles" }
+    - { path: "{{ base_clone_path }}/tmux/tmux.git",          dir: "tmuxsrc" }
+    - { path: "{{ base_clone_path }}/tmux-plugins/tpm",       dir: ".tmux/plugins/tpm" }
+    - { path: "{{ base_clone_path }}/vim/vim",                dir: "vim8src" }
+    - { path: "{{ base_clone_path }}/riywo/anyenv",           dir: ".anyenv" }
   notify:
     - Permission change to directories
     - Install autojump
+    - Delete cloned directories
     # - Create symlink
 
 - block:
@@ -85,53 +89,98 @@
     become_user: "{{ ansible_user }}"
     args:
       executable: /bin/bash
+
   - name: add pyenv path to .bashrc and .zshrc
     shell: |
-      echo -e '\n# pyenv' >> ~/.bashrc
-      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.bashrc
-      echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-      echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
-      echo -e '\n# pyenv' >> ~/.zshrc
-      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.zshrc
-      echo 'eval "$(pyenv init -)"' >> ~/.zshrc
-      echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.zshrc
-      source ~/.bashrc
+      echo -e '\n# pyenv' >> {{ item }}
+      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
+      echo 'eval "$(pyenv init -)"' >> {{ item }}
+      echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      exec $SHELL -l
       pyenv update
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
     become_user: "{{ ansible_user }}"
-    args:
-      executable: /bin/bash
+
   - name: .pyenvディレクトリの存在チェック
     stat:
       path: "{{ home_path }}/.pyenv/versions/3.6.0"
     register: py_path
+    become_user: "{{ ansible_user }}"
+
   - name: Pyenv install specific python version
     shell: |
       pyenv install 3.6.0
-    become_user: "{{ ansible_user }}"
     when: py_path.stat.exists == False
     args:
       executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+
+
+# - block:
+#   - name: Compile Vim
+#     shell: >
+#       cd /home/{{ ansible_user }}/vim8src && ./configure
+#       --enable-fail-if-missing
+#       --with-features=huge
+#       --disable-selinux
+#       --enable-luainterp
+#       --enable-perlinterp
+#       --enable-python3interp vi_cv_path_python3=/home/vagrant/.pyenv/versions/3.6.0/bin/python3.6
+#       --with-python3-config-dir=/home/vagrant/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+#       --enable-cscope
+#       --enable-fontset
+#       --enable-multibyte
+#     become_user: "{{ ansible_user }}"
+#     args:
+#       executable: /bin/bash
+#   - name: Make & install Vim
+#     shell: >
+#       cd /home/{{ ansible_user }}/vim8src && make
+#       && make install
+#     args:
+#       executable: /bin/bash
 
 - block:
+  - name: /usr/local/bin/vim ディレクトリの存在チェック
+    stat:
+      path: /usr/local/bin/vim
+    register: vim_path
   - name: Compile Vim
     shell: >
-      cd /home/{{ ansible_user }}/vim8src && ./configure
+      cd {{ home_path }}/vim8src && ./configure
       --enable-fail-if-missing
       --with-features=huge
       --disable-selinux
       --enable-luainterp
       --enable-perlinterp
-      --enable-python3interp vi_cv_path_python3=/home/vagrant/.pyenv/versions/3.6.0/bin/python3.6
-      --with-python3-config-dir=/home/vagrant/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+      --enable-python3interp vi_cv_path_python3={{ home_path }}/.pyenv/versions/3.6.0/bin/python3.6
+      --with-python3-config-dir={{ home_path }}/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
       --enable-cscope
       --enable-fontset
       --enable-multibyte
+    args:
+      executable: /bin/bash
     become_user: "{{ ansible_user }}"
-    args:
-      executable: /bin/bash
+    when: vim_path.stat.exists == False
+
   - name: Make & install Vim
-    shell: >
-      cd /home/{{ ansible_user }}/vim8src && make
-      && make install
+    shell: |
+      cd {{ home_path }}/vim8src
+      make
+      make install
+      git reset --hard
+    when: vim_path.stat.exists == False
     args:
       executable: /bin/bash
+
+# - block:
+#   - name: Delete cloned directories
+#     file:
+#       path: "{{ home_path }}/{{ item }}"
+#       state: absent
+#     with_items:
+#       - autojump
+#       - tmuxsrc
+#       - vim8src

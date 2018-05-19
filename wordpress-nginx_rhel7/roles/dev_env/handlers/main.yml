@@ -33,3 +33,13 @@
 #     - tmux.conf
 #   listen: Create symlink
 
+
+- block:
+  - name: Delete cloned directories
+    file:
+      path: "{{ home_path }}/{{ item }}"
+      state: absent
+    with_items:
+      - autojump
+      - tmuxsrc
+      - vim8src
