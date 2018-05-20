@@ -25,8 +25,9 @@
     register: goenv_path
     listen: Install goenv
 
+    # anyenv commandが文字列指定で無いと認識できない
   - name: install goenv
-    shell: "anyenv install goenv"
+    shell: "exec $SHELL -l && anyenv install goenv"
     args:
       executable: /bin/bash
     become_user: "{{ ansible_user }}"
@@ -90,6 +91,7 @@
 
   - name: Pyenv install specific python version
     shell: |
+      exec $SHELL -l
       pyenv install 3.6.0
     when: py_path.stat.exists == False
     args:
