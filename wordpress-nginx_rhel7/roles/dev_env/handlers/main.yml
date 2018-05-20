@@ -9,73 +9,139 @@
   with_items:
     - autojump
     - dotfiles
-    - tmuxsrc
     - .tmux/plugins/tpm
     - vim8src
-    - .anyenv
 
-# - name: Install autojump
-#   shell: |
-#     cd {{ home_path }}/autojump && ./install.py
-#     git reset --hard
-#   args:
-#     executable: /bin/bash
-#   become_user: "{{ ansible_user }}"
+- name: Install autojump
+  shell: "cd {{ home_path }}/autojump && ./install.py"
+  args:
+    executable: /bin/bash
+  become_user: "{{ ansible_user }}"
+
+- block:
+  - name: goenvディレクトリの存在チェック
+    stat:
+      path: "{{ home_path }}/.anyenv/envs/goenv"
+    register: goenv_path
+    listen: Install goenv
+
+  - name: install goenv
+    shell: "anyenv install goenv"
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    when: goenv_path.stat.exists ==  False
+    listen: Install goenv
+
+  - name: add go path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# Go' >> {{ item }}
+      echo 'export GOPATH=$HOME/go' >> {{ item }}
+      echo 'export GOBIN=$GOPATH/bin' >> {{ item }}
+      echo 'eval "$(goenv init -)"' >> {{ item }}
+      exec $SHELL -l
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install go
+
+  - name: install go and activate
+    shell: |
+      goenv install {{ go_version }}
+      goenv global {{ go_version }}
+      goenv rehash
+      exec $SHELL -l
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install go
+
+- block:
+  - shell: "curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash"
+    become_user: "{{ ansible_user }}"
+    args:
+      executable: /bin/bash
+      warn: False
+    listen: Install pyenv from source
+
+  - name: add pyenv path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# pyenv' >> {{ item }}
+      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
+      echo 'eval "$(pyenv init -)"' >> {{ item }}
+      echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      exec $SHELL -l
+      pyenv update
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+  - name: .pyenvディレクトリの存在チェック
+    stat:
+      path: "{{ home_path }}/.pyenv/versions/3.6.0"
+    register: py_path
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+  - name: Pyenv install specific python version
+    shell: |
+      pyenv install 3.6.0
+    when: py_path.stat.exists == False
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+- block:
+  - name: /usr/local/bin/vim ディレクトリの存在チェック
+    stat:
+      path: /usr/local/bin/vim
+    register: vim_path
+    listen: Compile Vim
+  - name: compile vim
+    shell: >
+      cd {{ home_path }}/vim8src && ./configure
+      --enable-fail-if-missing
+      --with-features=huge
+      --disable-selinux
+      --enable-luainterp
+      --enable-perlinterp
+      --enable-python3interp vi_cv_path_python3={{ home_path }}/.pyenv/versions/3.6.0/bin/python3.6
+      --with-python3-config-dir={{ home_path }}/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+      --enable-cscope
+      --enable-fontset
+      --enable-multibyte
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    when: vim_path.stat.exists == False
+    listen: Compile Vim
+
+  - name: Make & install Vim
+    shell: |
+      cd {{ home_path }}/vim8src
+      make
+      make install
+      git reset --hard
+    when: vim_path.stat.exists == False
+    args:
+      executable: /bin/bash
+    listen: Compile Vim
 
 
-# - block:
-#   - name: Check tmux has Installed
-#     stat:
-#       path: /usr/local/bin/tmux
-#     register: tmux_path
-#     listen: Install tmux
-#   - name: Make install tmux
-#     shell: |
-#       cd "{{ home_path }}/tmuxsrc"
-#       sh autogen.sh
-#       ./configure --prefix=/usr/local
-#       make -j4
-#       sudo make install
-#       git reset --hard
-#     become_user: "{{ ansible_user }}"
-#     when: tmux_path.stat.exists == false
-#     args:
-#       executable: /bin/bash
-#     listen: Install tmux
 
-#   # シェルをリフレッシュ
-#   # exec $SHELL -l
 
-# - block:
-#   - name: add goenv path to .bashrc and .zshrc
-#     shell: |
-#       echo -e '\n# anyenv' >> {{ item }}
-#       echo 'if [ -d $HOME/.anyenv ] ; then' >> {{ item }}
-#       echo '    export PATH="$HOME/.anyenv/bin:$PATH"' >> {{ item }}
-#       echo '    eval "$(anyenv init -)"' >> {{ item }}
-#       echo 'fi' >> {{ item }}
-#     become_user: "{{ ansible_user }}"
-#     args:
-#       executable: /bin/bash
-#     with_items:
-#       - ~/.bashrc
-#       - ~/.zshrc
-#     listen: Install goenv
-
-#   - name: Check goenv has cloned
-#     stat:
-#       path: "{{ home_path }}/.anyenv/envs/goenv"
-#     register: goenv_path
-#     listen: Install goenv
-
-#   - name: Try install goenv
-#     shell: |
-#       cd {{ home_path }}/.anyenv
-#       exec $SHELL -l
-#       anyenv install goenv
-#       exec $SHELL -l
-#     # become_user: "{{ ansible_user }}"
-#     when: goenv_path.stat.exists == false
-#     args:
-#       executable: /bin/bash
-#     listen: Install goenv
+- block:
+  - name: Delete cloned directories
+    file:
+      path: "{{ home_path }}/{{ item }}"
+      state: absent
+    with_items:
+      - autojump
+      - tmuxsrc
+      - vim8src
