@@ -19,10 +19,52 @@
   become_user: "{{ ansible_user }}"
 
 - block:
+  - name: goenvディレクトリの存在チェック
+    stat:
+      path: "{{ home_path }}/.anyenv/envs/goenv"
+    register: goenv_path
+    listen: Install goenv
+
+  - name: install goenv
+    shell: "anyenv install goenv"
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    when: goenv_path.stat.exists ==  False
+    listen: Install goenv
+
+  - name: add go path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# Go' >> {{ item }}
+      echo 'export GOPATH=$HOME/go' >> {{ item }}
+      echo 'export GOBIN=$GOPATH/bin' >> {{ item }}
+      echo 'eval "$(goenv init -)"' >> {{ item }}
+      exec $SHELL -l
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install go
+
+  - name: install go and activate
+    shell: |
+      goenv install {{ go_version }}
+      goenv global 1.8.3
+      goenv rehash
+      exec $SHELL -l
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install go
+
+- block:
   - shell: "curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash"
     become_user: "{{ ansible_user }}"
     args:
       executable: /bin/bash
+      warn: False
     listen: Install pyenv from source
 
   - name: add pyenv path to .bashrc and .zshrc
@@ -61,7 +103,8 @@
       path: /usr/local/bin/vim
     register: vim_path
     listen: Compile Vim
-  - shell: >
+  - name: compile vim
+    shell: >
       cd {{ home_path }}/vim8src && ./configure
       --enable-fail-if-missing
       --with-features=huge
