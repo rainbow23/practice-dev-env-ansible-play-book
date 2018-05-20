@@ -18,20 +18,79 @@
     executable: /bin/bash
   become_user: "{{ ansible_user }}"
 
-# - name: Start Create symlink
-#   file:
-#     src: "{{ home_path }}/dotfiles/_{{ item }}"
-#     dest: "{{ home_path }}/.{{ item }}"
-#     owner: "{{ ansible_user }}"
-#     group: wheel
-#     mode: 0755
-#     state: link
-#   with_items:
-#     - vimrc
-#     - bashrc
-#     - zshrc
-#     - tmux.conf
-#   listen: Create symlink
+- block:
+  - shell: "curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash"
+    become_user: "{{ ansible_user }}"
+    args:
+      executable: /bin/bash
+    listen: Install pyenv from source
+
+  - name: add pyenv path to .bashrc and .zshrc
+    shell: |
+      echo -e '\n# pyenv' >> {{ item }}
+      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
+      echo 'eval "$(pyenv init -)"' >> {{ item }}
+      echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      exec $SHELL -l
+      pyenv update
+    with_items:
+      - ~/.bashrc
+      - ~/.zshrc
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+  - name: .pyenvディレクトリの存在チェック
+    stat:
+      path: "{{ home_path }}/.pyenv/versions/3.6.0"
+    register: py_path
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+  - name: Pyenv install specific python version
+    shell: |
+      pyenv install 3.6.0
+    when: py_path.stat.exists == False
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install pyenv from source
+
+- block:
+  - name: /usr/local/bin/vim ディレクトリの存在チェック
+    stat:
+      path: /usr/local/bin/vim
+    register: vim_path
+    listen: Compile Vim
+  - shell: >
+      cd {{ home_path }}/vim8src && ./configure
+      --enable-fail-if-missing
+      --with-features=huge
+      --disable-selinux
+      --enable-luainterp
+      --enable-perlinterp
+      --enable-python3interp vi_cv_path_python3={{ home_path }}/.pyenv/versions/3.6.0/bin/python3.6
+      --with-python3-config-dir={{ home_path }}/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+      --enable-cscope
+      --enable-fontset
+      --enable-multibyte
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    when: vim_path.stat.exists == False
+    listen: Compile Vim
+
+  - name: Make & install Vim
+    shell: |
+      cd {{ home_path }}/vim8src
+      make
+      make install
+      git reset --hard
+    when: vim_path.stat.exists == False
+    args:
+      executable: /bin/bash
+    listen: Compile Vim
+
+
 
 
 - block:
