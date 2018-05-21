@@ -4,6 +4,7 @@
     home_path: "/home/{{ ansible_user }}"
     base_clone_path: "https://github.com"
     go_version: "1.8.3"
+    python_version: "3.6.0"
 
 - name: "Install packages"
   yum:
@@ -107,9 +108,9 @@
       mode: 0755
       owner: "{{ ansible_user }}"
 
-  - name: Default shell to zsh
-    shell: |
-      chsh -s /usr/bin/zsh
-      exec $SHELL -l
-    args:
-      executable: /bin/bash
+  # - name: Default shell to zsh
+  #   shell: |
+  #     chsh -s /usr/bin/zsh
+  #     exec $SHELL -l
+  #   args:
+  #     executable: /bin/bash

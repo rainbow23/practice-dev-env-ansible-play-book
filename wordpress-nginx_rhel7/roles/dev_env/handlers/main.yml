@@ -27,7 +27,8 @@
 
     # anyenv commandが文字列指定で無いと認識できない
   - name: install goenv
-    shell: "exec $SHELL -l && anyenv install goenv"
+    shell: |
+      anyenv install goenv
     args:
       executable: /bin/bash
     become_user: "{{ ansible_user }}"
@@ -37,9 +38,11 @@
   - name: add go path to .bashrc and .zshrc
     shell: |
       echo -e '\n# Go' >> {{ item }}
-      echo 'export GOPATH=$HOME/go' >> {{ item }}
-      echo 'export GOBIN=$GOPATH/bin' >> {{ item }}
-      echo 'eval "$(goenv init -)"' >> {{ item }}
+      echo 'if [ -d $HOME/.anyenv/envs/goenv ] ; then' >> {{ item }}
+      echo '    export GOPATH=$HOME/go' >> {{ item }}
+      echo '    export GOBIN=$GOPATH/bin' >> {{ item }}
+      echo '    eval "$(goenv init -)"' >> {{ item }}
+      echo 'fi' >>  {{ item }}
       exec $SHELL -l
     with_items:
       - ~/.bashrc
@@ -71,9 +74,11 @@
   - name: add pyenv path to .bashrc and .zshrc
     shell: |
       echo -e '\n# pyenv' >> {{ item }}
+      echo 'if [ -d $HOME/.pyenv ] ; then' >> {{ item }}
       echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
       echo 'eval "$(pyenv init -)"' >> {{ item }}
       echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      echo 'fi' >>  {{ item }}
       exec $SHELL -l
       pyenv update
     with_items:
@@ -84,15 +89,15 @@
 
   - name: .pyenvディレクトリの存在チェック
     stat:
-      path: "{{ home_path }}/.pyenv/versions/3.6.0"
+      # path: "{{ home_path }}/.pyenv/versions/{{ python_version }}"
+      path: "{{ home_path }}/.pyenv"
     register: py_path
     become_user: "{{ ansible_user }}"
     listen: Install pyenv from source
 
   - name: Pyenv install specific python version
     shell: |
-      exec $SHELL -l
-      pyenv install 3.6.0
+      pyenv install {{ python_version }}
     when: py_path.stat.exists == False
     args:
       executable: /bin/bash
@@ -134,9 +139,6 @@
     args:
       executable: /bin/bash
     listen: Compile Vim
-
-
-
 
 - block:
   - name: Delete cloned directories

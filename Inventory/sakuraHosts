@@ -1,0 +1,5 @@
+[targets]
+srainbow
+
+[targets:vars]
+ansible_user=rainbow
