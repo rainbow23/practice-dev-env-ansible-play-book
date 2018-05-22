@@ -19,22 +19,43 @@
   become_user: "{{ ansible_user }}"
 
 - block:
-  - name: goenvディレクトリの存在チェック
-    stat:
-      path: "{{ home_path }}/.anyenv/envs/goenv"
-    register: goenv_path
-    listen: Install goenv
+  # - name: goenv pyenvディレクトリの存在チェック
+  #   stat:
+  #     path: "{{ home_path }}/.anyenv/envs/{{ item }}"
+  #   register: "{{ item }}_path"
+  #   with_items:
+  #     - goenv
+  #     - pyenv
+  #   listen: Install goenv pyenv
 
-    # anyenv commandが文字列指定で無いと認識できない
-  - name: install goenv
+  - name: install goenv pyenv
     shell: |
-      anyenv install goenv
+      anyenv install {{ item }}
+      exec $SHELL -l
     args:
       executable: /bin/bash
     become_user: "{{ ansible_user }}"
-    when: goenv_path.stat.exists ==  False
-    listen: Install goenv
+    # when: '"{{ item }}_path.stat.exists ==  False"'
+    with_items:
+      - goenv
+      - pyenv
+    listen: Install goenv pyenv
 
+  - name: install go, python and activate
+    shell: |
+      {{ item.env }} install {{ item.ver }}
+      {{ item.env }} global {{ item.ver }}
+      {{ item.env }} rehash
+      exec $SHELL -l
+    with_items:
+      - { env: "goenv", ver: "{{ go_version }}" }
+      - { env: "pyenv", ver: "{{ python_version }}" }
+    args:
+      executable: /bin/bash
+    become_user: "{{ ansible_user }}"
+    listen: Install goenv pyenv
+
+- block:
   - name: add go path to .bashrc and .zshrc
     shell: |
       echo -e '\n# Go' >> {{ item }}
@@ -50,34 +71,13 @@
     args:
       executable: /bin/bash
     become_user: "{{ ansible_user }}"
-    listen: Install go
-
-  - name: install go and activate
-    shell: |
-      goenv install {{ go_version }}
-      goenv global {{ go_version }}
-      goenv rehash
-      exec $SHELL -l
-    args:
-      executable: /bin/bash
-    become_user: "{{ ansible_user }}"
-    listen: Install go
-
-- block:
-  - shell: "curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash"
-    become_user: "{{ ansible_user }}"
-    args:
-      executable: /bin/bash
-      warn: False
-    listen: Install pyenv from source
-
+    listen: Go path to shell
   - name: add pyenv path to .bashrc and .zshrc
     shell: |
       echo -e '\n# pyenv' >> {{ item }}
-      echo 'if [ -d $HOME/.pyenv ] ; then' >> {{ item }}
-      echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> {{ item }}
-      echo 'eval "$(pyenv init -)"' >> {{ item }}
-      echo 'eval "$(pyenv virtualenv-init -)"' >> {{ item }}
+      echo 'if [ -d $HOME/.anyenv/envs/pyenv ] ; then' >> {{ item }}
+      echo '    export PATH="$HOME/.anyenv/envs/pyenv/bin:$PATH"' >> {{ item }}
+      echo '    eval "$(pyenv init -)"' >> {{ item }}
       echo 'fi' >>  {{ item }}
       exec $SHELL -l
       pyenv update
@@ -85,24 +85,7 @@
       - ~/.bashrc
       - ~/.zshrc
     become_user: "{{ ansible_user }}"
-    listen: Install pyenv from source
-
-  - name: .pyenvディレクトリの存在チェック
-    stat:
-      # path: "{{ home_path }}/.pyenv/versions/{{ python_version }}"
-      path: "{{ home_path }}/.pyenv"
-    register: py_path
-    become_user: "{{ ansible_user }}"
-    listen: Install pyenv from source
-
-  - name: Pyenv install specific python version
-    shell: |
-      pyenv install {{ python_version }}
-    when: py_path.stat.exists == False
-    args:
-      executable: /bin/bash
-    become_user: "{{ ansible_user }}"
-    listen: Install pyenv from source
+    listen: Python path to shell
 
 - block:
   - name: /usr/local/bin/vim ディレクトリの存在チェック
@@ -118,8 +101,8 @@
       --disable-selinux
       --enable-luainterp
       --enable-perlinterp
-      --enable-python3interp vi_cv_path_python3={{ home_path }}/.pyenv/versions/3.6.0/bin/python3.6
-      --with-python3-config-dir={{ home_path }}/.pyenv/versions/3.6.0/lib/python3.6/config-3.6m-x86_64-linux-gnu
+      --enable-python3interp vi_cv_path_python3={{ pyenv_path }}
+      --with-python3-config-dir={{ pyenv_gnu }}
       --enable-cscope
       --enable-fontset
       --enable-multibyte

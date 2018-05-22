@@ -1,10 +1,15 @@
 ---
 - name: "Set vars"
   set_fact:
-    home_path: "/home/{{ ansible_user }}"
-    base_clone_path: "https://github.com"
     go_version: "1.8.3"
     python_version: "3.6.0"
+
+- name: "Set path"
+  set_fact:
+    home_path: "/home/{{ ansible_user }}"
+    base_clone_path: "https://github.com"
+    pyenv_path: "/home/{{ ansible_user }}/.anyenv/envs/pyenv/versions/{{ python_version }}/bin/python3.6"
+    pyenv_gnu: "/home/{{ ansible_user }}/.anyenv/envs/pyenv/versions/{{ python_version }}/lib/python3.6/config-3.6m-x86_64-linux-gnu"
 
 - name: "Install packages"
   yum:
@@ -44,10 +49,11 @@
   notify:
     - Permission change to directories
     - Install autojump
-    - Install pyenv from source
+    # - Install pyenv from source
     - Compile Vim
-    - Install goenv
-    - Install go
+    - Install goenv pyenv
+    - Go path to shell
+    - Python path to shell
     - Delete cloned directories
 
 - block:
