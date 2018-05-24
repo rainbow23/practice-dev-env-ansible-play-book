@@ -78,6 +78,7 @@
       echo 'if [ -d $HOME/.anyenv/envs/pyenv ] ; then' >> {{ item }}
       echo '    export PATH="$HOME/.anyenv/envs/pyenv/bin:$PATH"' >> {{ item }}
       echo '    eval "$(pyenv init -)"' >> {{ item }}
+      echo '    eval "$(pyenv virtualenv-init -)"' >> {{ item }}
       echo 'fi' >>  {{ item }}
       exec $SHELL -l
       pyenv update
@@ -86,6 +87,13 @@
       - ~/.zshrc
     become_user: "{{ ansible_user }}"
     listen: Python path to shell
+
+  - name: install fzf
+    shell: |
+      cd $HOME/.fzf
+      ./install
+    become_user: "{{ ansible_user }}"
+    listen: Install fzf
 
 - block:
   - name: /usr/local/bin/vim ディレクトリの存在チェック

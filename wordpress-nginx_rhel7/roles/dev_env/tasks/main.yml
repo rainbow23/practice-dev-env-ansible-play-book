@@ -46,6 +46,8 @@
     - { path: "{{ base_clone_path }}/tmux-plugins/tpm",       dir: ".tmux/plugins/tpm" }
     - { path: "{{ base_clone_path }}/vim/vim",                dir: "vim8src" }
     - { path: "{{ base_clone_path }}/riywo/anyenv",           dir: ".anyenv" }
+    - { path: "{{ base_clone_path }}/junegunn/fzf",           dir: ".fzf" }
+
   notify:
     - Permission change to directories
     - Install autojump
@@ -54,6 +56,7 @@
     - Install goenv pyenv
     - Go path to shell
     - Python path to shell
+    - Install fzf
     - Delete cloned directories
 
 - block:
